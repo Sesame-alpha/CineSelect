@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CineSelect — Seat Reservation</title>
+<style>
+  :root{
+    --bg: #170c0e;
+    --surface: #2a1318;
+    --surface-soft: #341a20;
+    --crimson: #b3122e;
+    --crimson-bright: #e0273f;
+    --rose: #e6b4ba;
+    --rose-dim: #7a5a5e;
+    --gold-line: #c98a52;
+    --text: #f6e9ea;
+    --text-dim: #b89aa0;
+    --radius: 10px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 60px;
+  }
+
+  .display{
+    font-family: Georgia, 'Times New Roman', serif;
+    letter-spacing: 0.04em;
+  }
+
+  header{
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  header h1{
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    margin: 0 0 6px;
+    color: var(--rose);
+  }
+
+  header p{
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+
+  .movie-card{
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+
+  .movie-card span strong{
+    color: var(--text);
+    display: block;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--crimson-bright);
+    margin-bottom: 2px;
+  }
+
+  .theater{
+    width: 100%;
+    max-width: 620px;
+  }
+
+  .screen-wrap{
+    perspective: 400px;
+    margin-bottom: 36px;
+  }
+
+  .screen{
+    height: 16px;
+    border-radius: 50% / 100%;
+    background: linear-gradient(180deg, var(--crimson-bright), var(--crimson));
+    box-shadow: 0 8px 40px 6px rgba(224, 39, 63, 0.45);
+    transform: rotateX(-25deg);
+  }
+
+  .screen-label{
+    text-align: center;
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    color: var(--text-dim);
+    margin-top: 10px;
+    text-transform: uppercase;
+  }
+
+  .seat-map{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .row{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .row-label{
+    width: 20px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  .seats{
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+
+  .aisle{
+    width: 18px;
+  }
+
+  .seat{
+    width: clamp(22px, 7vw, 32px);
+    height: clamp(22px, 7vw, 32px);
+    border-radius: 6px 6px 3px 3px;
+    border: 1.5px solid var(--rose-dim);
+    background: transparent;
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+    padding: 0;
+  }
+
+  .seat:hover:not(:disabled){
+    transform: translateY(-2px);
+    border-color: var(--rose);
+  }
+
+  .seat.selected{
+    background: var(--crimson-bright);
+    border-color: var(--crimson-bright);
+    box-shadow: 0 0 10px rgba(224,39,63,0.55);
+  }
+
+  .seat.occupied{
+    background: var(--surface-soft);
+    border-color: var(--surface-soft);
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .seat.premium:not(.occupied):not(.selected){
+    border-color: var(--gold-line);
+  }
+
+  .legend{
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 28px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+
+  .legend-item{
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .legend-swatch{
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1.5px solid var(--rose-dim);
+  }
+
+  .legend-swatch.selected{ background: var(--crimson-bright); border-color: var(--crimson-bright); }
+  .legend-swatch.occupied{ background: var(--surface-soft); border-color: var(--surface-soft); }
+  .legend-swatch.premium{ border-color: var(--gold-line); }
+
+  .summary{
+    background: var(--surface);
+    border: 1px solid var(--surface-soft);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    width: 100%;
+  }
+
+  .summary h2{
+    margin: 0 0 12px;
+    font-size: 1.1rem;
+    color: var(--rose);
+    font-weight: 600;
+  }
+
+  .summary-row{
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--surface-soft);
+    color: var(--text-dim);
+  }
+
+  .summary-row:last-of-type{ border-bottom: none; }
+
+  .summary-row span:last-child{ color: var(--text); font-weight: 600; }
+
+  .summary-total{
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--surface-soft);
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .summary-total span:last-child{ color: var(--crimson-bright); }
+
+  .confirm-btn{
+    width: 100%;
+    margin-top: 16px;
+    padding: 13px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--crimson);
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    letter-spacing: 0.02em;
+  }
+
+  .confirm-btn:hover:not(:disabled){ background: var(--crimson-bright); }
+
+  .confirm-btn:disabled{
+    background: var(--surface-soft);
+    color: var(--text-dim);
+    cursor: not-allowed;
+  }
+
+  .toast{
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--crimson);
+    color: var(--text);
+    padding: 12px 22px;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  }
+
+  .toast.show{
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  footer{
+    margin-top: 36px;
+    font-size: 0.72rem;
+    color: var(--rose-dim);
+    letter-spacing: 0.05em;
+  }
+
+  @media (max-width: 380px){
+    .seats{ gap: 4px; }
+    .row{ gap: 4px; }
+    .row-label{ width: 16px; font-size: 0.7rem; }
+    .legend{ gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 class="display">CineSelect</h1>
+  <p>Choose your seats for tonight's showing</p>
+  <div class="movie-card">
+    <span><strong>Film</strong>The Last Reel</span>
+    <span><strong>Showtime</strong>19:45</span>
+    <span><strong>Screen</strong>3</span>
+  </div>
+</header>
+
+<div class="theater">
+
+  <div class="screen-wrap">
+    <div class="screen"></div>
+    <div class="screen-label">Screen</div>
+  </div>
+
+  <div class="seat-map" id="seatMap"></div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-swatch"></span> Available</div>
+    <div class="legend-item"><span class="legend-swatch premium"></span> Premium</div>
+    <div class="legend-item"><span class="legend-swatch selected"></span> Selected</div>
+    <div class="legend-item"><span class="legend-swatch occupied"></span> Taken</div>
+  </div>
+
+  <div class="summary">
+    <h2 class="display">Booking Summary</h2>
+    <div class="summary-row"><span>Seats selected</span><span id="seatCount">0</span></div>
+    <div class="summary-row"><span>Standard (P50)</span><span id="standardCount">0</span></div>
+    <div class="summary-row"><span>Premium (P80)</span><span id="premiumCount">0</span></div>
+    <div class="summary-row"><span>Seat numbers</span><span id="seatList">—</span></div>
+    <div class="summary-total"><span>Total</span><span id="total">P0</span></div>
+    <button class="confirm-btn" id="confirmBtn" disabled>Confirm booking</button>
+  </div>
+
+</div>
+
+<footer>CineSelect · built by Sesame Dithupa</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+  const ROWS = ['A','B','C','D','E','F','G','H'];
+  const SEATS_PER_ROW = 10;
+  const PREMIUM_ROWS = ['G','H'];
+  const PRICES = { standard: 50, premium: 80 };
+  const STORAGE_KEY = 'cineselect_occupied';
+
+  // Seed a default set of occupied seats so the map feels realistic
+  const DEFAULT_OCCUPIED = ['A3','A4','B7','C2','C9','D5','D6','D7','E1','F10','G4','G5','H8'];
+
+  let occupied = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || DEFAULT_OCCUPIED;
+  let selected = new Set();
+
+  const seatMap = document.getElementById('seatMap');
+
+  function buildMap(){
+    seatMap.innerHTML = '';
+    ROWS.forEach(rowLetter => {
+      const row = document.createElement('div');
+      row.className = 'row';
+
+      const label = document.createElement('div');
+      label.className = 'row-label';
+      label.textContent = rowLetter;
+      row.appendChild(label);
+
+      const leftSeats = document.createElement('div');
+      leftSeats.className = 'seats';
+      const rightSeats = document.createElement('div');
+      rightSeats.className = 'seats';
+
+      for(let i = 1; i <= SEATS_PER_ROW; i++){
+        const seatId = rowLetter + i;
+        const btn = document.createElement('button');
+        btn.className = 'seat';
+        btn.dataset.seat = seatId;
+        btn.setAttribute('aria-label', `Seat ${seatId}`);
+
+        if(PREMIUM_ROWS.includes(rowLetter)) btn.classList.add('premium');
+        if(occupied.includes(seatId)){
+          btn.classList.add('occupied');
+          btn.disabled = true;
+        }
+
+        btn.addEventListener('click', () => toggleSeat(seatId, btn));
+
+        if(i <= 5) leftSeats.appendChild(btn);
+        else rightSeats.appendChild(btn);
+      }
+
+      const aisle = document.createElement('div');
+      aisle.className = 'aisle';
+
+      row.appendChild(leftSeats);
+      row.appendChild(aisle);
+      row.appendChild(rightSeats);
+      seatMap.appendChild(row);
+    });
+  }
+
+  function toggleSeat(seatId, btn){
+    if(selected.has(seatId)){
+      selected.delete(seatId);
+      btn.classList.remove('selected');
+    } else {
+      selected.add(seatId);
+      btn.classList.add('selected');
+    }
+    updateSummary();
+  }
+
+  function updateSummary(){
+    const seatArr = Array.from(selected).sort();
+    let standardCount = 0, premiumCount = 0;
+
+    seatArr.forEach(seatId => {
+      const rowLetter = seatId[0];
+      if(PREMIUM_ROWS.includes(rowLetter)) premiumCount++;
+      else standardCount++;
+    });
+
+    const total = standardCount * PRICES.standard + premiumCount * PRICES.premium;
+
+    document.getElementById('seatCount').textContent = seatArr.length;
+    document.getElementById('standardCount').textContent = standardCount;
+    document.getElementById('premiumCount').textContent = premiumCount;
+    document.getElementById('seatList').textContent = seatArr.length ? seatArr.join(', ') : '—';
+    document.getElementById('total').textContent = `P${total}`;
+
+    document.getElementById('confirmBtn').disabled = seatArr.length === 0;
+  }
+
+  function showToast(message){
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2400);
+  }
+
+  document.getElementById('confirmBtn').addEventListener('click', () => {
+    if(selected.size === 0) return;
+
+    occupied = occupied.concat(Array.from(selected));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(occupied));
+
+    const count = selected.size;
+    selected.clear();
+    buildMap();
+    updateSummary();
+
+    showToast(`Booking confirmed for ${count} seat${count > 1 ? 's' : ''}`);
+  });
+
+  buildMap();
+  updateSummary();
+</script>
+
+</body>
+</html>
